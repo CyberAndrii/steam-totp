@@ -1,0 +1,20 @@
+name: Steam TOTP
+description: This action generates Steam auth codes for use in actions.
+author: Andrii Vitiv
+branding:
+  icon: hash
+  color: yellow
+inputs:
+  shared_secret:
+    description: Steam shared secret. Used to generate 2FA codes. Can be found in the .maFile.
+    required: true
+  time_offset:
+    description: The number of seconds that will be added to the current time.
+    required: false
+    default: 0
+outputs:
+  code:
+    description: Generated auth code.
+runs:
+  using: node12
+  main: dist/index.js

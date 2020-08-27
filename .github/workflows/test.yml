@@ -1,0 +1,33 @@
+name: Test
+
+on:
+  push:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ ubuntu-latest, windows-latest, macOS-latest ]
+
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Generate auth code
+      id: generate
+      uses: ./
+      with:
+        shared_secret: ${{ secrets.STEAM_SHARED_SECRET }}
+
+    - name: Verify code length
+      run: |
+        code=${{ steps.generate.outputs.code }}
+        [ ${#code} -ge 5 ] || exit 1
+      shell: bash
