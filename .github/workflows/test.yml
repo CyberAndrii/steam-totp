@@ -2,7 +2,7 @@ name: Test
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, dev ]
     paths-ignore:
       - '**.md'
   pull_request:
@@ -20,6 +20,10 @@ jobs:
     steps:
     - uses: actions/checkout@v2
 
+    - uses: CyberAndrii/setup-steamcmd@v1
+      # Login only on 1 OS because same code can't be used 2 times.
+      if: matrix.os == 'ubuntu-latest'
+
     - name: Generate auth code
       id: generate
       uses: ./
@@ -31,3 +35,9 @@ jobs:
         code=${{ steps.generate.outputs.code }}
         [ ${#code} -ge 5 ] || exit 1
       shell: bash
+
+    - name: Login
+      run: steamcmd +login ${{ secrets.STEAM_USERNAME }} ${{ secrets.STEAM_PASSWORD }} ${{ steps.generate.outputs.code }} +quit
+      shell: bash
+      # Login only on 1 OS because same code can't be used 2 times.
+      if: matrix.os == 'ubuntu-latest'
