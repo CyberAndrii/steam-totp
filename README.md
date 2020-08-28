@@ -20,7 +20,7 @@ steps:
   with:
     shared_secret: ${{ secrets.STEAM_SHARED_SECRET }}
   
-- run: steamcmd +login ${{ secrets.STEAM_USERNAME }} ${{ secrets.STEAM_PASSWORD }} ${{ steps.generate.code }} +quit
+- run: steamcmd +login ${{ secrets.STEAM_USERNAME }} ${{ secrets.STEAM_PASSWORD }} ${{ steps.generate.outputs.code }} +quit
  ```
  
  It also uses [setup-steamcmd](https://github.com/CyberAndrii/setup-steamcmd) action.
