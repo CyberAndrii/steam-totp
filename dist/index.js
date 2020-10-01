@@ -56,6 +56,14 @@ module.exports = require("os");
 
 /***/ }),
 
+/***/ 170:
+/***/ (function(module) {
+
+module.exports = eval("require")("steam-totp");
+
+
+/***/ }),
+
 /***/ 186:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -79,6 +87,8 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const command_1 = __webpack_require__(241);
+const file_command_1 = __webpack_require__(717);
+const utils_1 = __webpack_require__(278);
 const os = __importStar(__webpack_require__(87));
 const path = __importStar(__webpack_require__(622));
 /**
@@ -105,9 +115,17 @@ var ExitCode;
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function exportVariable(name, val) {
-    const convertedVal = command_1.toCommandValue(val);
+    const convertedVal = utils_1.toCommandValue(val);
     process.env[name] = convertedVal;
-    command_1.issueCommand('set-env', { name }, convertedVal);
+    const filePath = process.env['GITHUB_ENV'] || '';
+    if (filePath) {
+        const delimiter = '_GitHubActionsFileCommandDelimeter_';
+        const commandValue = `${name}<<${delimiter}${os.EOL}${convertedVal}${os.EOL}${delimiter}`;
+        file_command_1.issueCommand('ENV', commandValue);
+    }
+    else {
+        command_1.issueCommand('set-env', { name }, convertedVal);
+    }
 }
 exports.exportVariable = exportVariable;
 /**
@@ -123,7 +141,13 @@ exports.setSecret = setSecret;
  * @param inputPath
  */
 function addPath(inputPath) {
-    command_1.issueCommand('add-path', {}, inputPath);
+    const filePath = process.env['GITHUB_PATH'] || '';
+    if (filePath) {
+        file_command_1.issueCommand('PATH', inputPath);
+    }
+    else {
+        command_1.issueCommand('add-path', {}, inputPath);
+    }
     process.env['PATH'] = `${inputPath}${path.delimiter}${process.env['PATH']}`;
 }
 exports.addPath = addPath;
@@ -285,13 +309,6 @@ exports.getState = getState;
 
 /***/ }),
 
-/***/ 211:
-/***/ (function(module) {
-
-module.exports = require("https");
-
-/***/ }),
-
 /***/ 241:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
@@ -306,6 +323,7 @@ var __importStar = (this && this.__importStar) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(278);
 /**
  * Commands
  *
@@ -359,6 +377,32 @@ class Command {
         return cmdStr;
     }
 }
+function escapeData(s) {
+    return utils_1.toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A');
+}
+function escapeProperty(s) {
+    return utils_1.toCommandValue(s)
+        .replace(/%/g, '%25')
+        .replace(/\r/g, '%0D')
+        .replace(/\n/g, '%0A')
+        .replace(/:/g, '%3A')
+        .replace(/,/g, '%2C');
+}
+//# sourceMappingURL=command.js.map
+
+/***/ }),
+
+/***/ 278:
+/***/ (function(__unusedmodule, exports) {
+
+"use strict";
+
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+Object.defineProperty(exports, "__esModule", { value: true });
 /**
  * Sanitizes an input into a string so it can be passed into issueCommand safely
  * @param input input to sanitize into a string
@@ -373,21 +417,7 @@ function toCommandValue(input) {
     return JSON.stringify(input);
 }
 exports.toCommandValue = toCommandValue;
-function escapeData(s) {
-    return toCommandValue(s)
-        .replace(/%/g, '%25')
-        .replace(/\r/g, '%0D')
-        .replace(/\n/g, '%0A');
-}
-function escapeProperty(s) {
-    return toCommandValue(s)
-        .replace(/%/g, '%25')
-        .replace(/\r/g, '%0D')
-        .replace(/\n/g, '%0A')
-        .replace(/:/g, '%3A')
-        .replace(/,/g, '%2C');
-}
-//# sourceMappingURL=command.js.map
+//# sourceMappingURL=utils.js.map
 
 /***/ }),
 
@@ -395,7 +425,7 @@ function escapeProperty(s) {
 /***/ (function(__unusedmodule, __unusedexports, __webpack_require__) {
 
 const core = __webpack_require__(186);
-const totp = __webpack_require__(627);
+const totp = __webpack_require__(170);
 
 function run()
 {
@@ -431,13 +461,6 @@ run();
 
 /***/ }),
 
-/***/ 417:
-/***/ (function(module) {
-
-module.exports = require("crypto");
-
-/***/ }),
-
 /***/ 622:
 /***/ (function(module) {
 
@@ -445,171 +468,46 @@ module.exports = require("path");
 
 /***/ }),
 
-/***/ 627:
+/***/ 717:
 /***/ (function(__unusedmodule, exports, __webpack_require__) {
 
 "use strict";
 
-
-const Crypto = __webpack_require__(417);
-
-/**
- * Returns the current local Unix time
- * @param {number} [timeOffset=0] - This many seconds will be added to the returned time
- * @returns {number}
- */
-exports.time = function(timeOffset) {
-	return Math.floor(Date.now() / 1000) + (timeOffset || 0);
+// For internal use, subject to change.
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (Object.hasOwnProperty.call(mod, k)) result[k] = mod[k];
+    result["default"] = mod;
+    return result;
 };
-
-/**
- * Generate a Steam-style TOTP authentication code.
- * @param {Buffer|string} secret - Your TOTP shared_secret as a Buffer, hex, or base64
- * @param {number} [timeOffset=0] - If you know how far off your clock is from the Steam servers, put the offset here in seconds
- * @returns {string}
- */
-exports.generateAuthCode = exports.getAuthCode = function(secret, timeOffset) {
-	if (typeof timeOffset === 'function') {
-		exports.getTimeOffset((err, offset, latency) => {
-			if (err) {
-				timeOffset(err);
-				return;
-			}
-
-			let code = exports.generateAuthCode(secret, offset);
-			timeOffset(null, code, offset, latency);
-		});
-
-		return;
-	}
-
-	secret = bufferizeSecret(secret);
-
-	let time = exports.time(timeOffset);
-
-	let buffer = Buffer.allocUnsafe(8);
-	buffer.writeUInt32BE(0, 0);
-	buffer.writeUInt32BE(Math.floor(time / 30), 4);
-
-	let hmac = Crypto.createHmac('sha1', secret);
-	hmac = hmac.update(buffer).digest();
-
-	let start = hmac[19] & 0x0F;
-	hmac = hmac.slice(start, start + 4);
-
-	let fullcode = hmac.readUInt32BE(0) & 0x7FFFFFFF;
-
-	const chars = '23456789BCDFGHJKMNPQRTVWXY';
-
-	let code = '';
-	for (let i = 0; i < 5; i++) {
-		code += chars.charAt(fullcode % chars.length);
-		fullcode /= chars.length;
-	}
-
-	return code;
-};
-
-/**
- * Generate a base64 confirmation key for use with mobile trade confirmations. The key can only be used once.
- * @param {Buffer|string} identitySecret - The identity_secret that you received when enabling two-factor authentication
- * @param {number} time - The Unix time for which you are generating this secret. Generally should be the current time.
- * @param {string} tag - The tag which identifies what this request (and therefore key) will be for. "conf" to load the confirmations page, "details" to load details about a trade, "allow" to confirm a trade, "cancel" to cancel it.
- * @returns {string}
- */
-exports.generateConfirmationKey = exports.getConfirmationKey = function(identitySecret, time, tag) {
-	identitySecret = bufferizeSecret(identitySecret);
-
-	let dataLen = 8;
-
-	if (tag) {
-		if (tag.length > 32) {
-			dataLen += 32;
-		} else {
-			dataLen += tag.length;
-		}
-	}
-
-	let buffer = Buffer.allocUnsafe(dataLen);
-	buffer.writeUInt32BE(0, 0);
-	buffer.writeUInt32BE(time, 4);
-
-	if (tag) {
-		buffer.write(tag, 8);
-	}
-
-	let hmac = Crypto.createHmac('sha1', identitySecret);
-	return hmac.update(buffer).digest('base64');
-};
-
-exports.getTimeOffset = function(callback) {
-	let start = Date.now();
-	let req = __webpack_require__(211).request({
-		"hostname": "api.steampowered.com",
-		"path": "/ITwoFactorService/QueryTime/v1/",
-		"method": "POST",
-		"headers": {
-			"Content-Length": 0
-		}
-	}, (res) => {
-		if (res.statusCode != 200) {
-			callback(new Error("HTTP error " + res.statusCode));
-			return;
-		}
-
-		let response = '';
-		res.on('data', (chunk) => {
-			response += chunk;
-		});
-
-		res.on('end', () => {
-			try {
-				response = JSON.parse(response).response;
-			} catch(e) {
-				callback(new Error("Malformed response"));
-			}
-
-			if (!response || !response.server_time) {
-				callback(new Error("Malformed response"));
-			}
-
-			let end = Date.now();
-			let offset = response.server_time - exports.time();
-
-			callback(null, offset, end - start);
-		});
-	});
-
-	req.on('error', callback);
-
-	req.end();
-};
-
-/**
- * Get a standardized device ID based on your SteamID.
- * @param {string|object} steamID - Your SteamID, either as a string or as an object which has a toString() method that returns the SteamID
- * @returns {string}
- */
-exports.getDeviceID = function(steamID) {
-	let salt = process.env.STEAM_TOTP_SALT || '';
-	return "android:" + Crypto.createHash('sha1').update(steamID.toString() + salt).digest('hex')
-			.replace(/^([0-9a-f]{8})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{4})([0-9a-f]{12}).*$/, '$1-$2-$3-$4-$5');
-};
-
-function bufferizeSecret(secret) {
-	if (typeof secret === 'string') {
-		// Check if it's hex
-		if (secret.match(/[0-9a-f]{40}/i)) {
-			return Buffer.from(secret, 'hex');
-		} else {
-			// Looks like it's base64
-			return Buffer.from(secret, 'base64');
-		}
-	}
-
-	return secret;
+Object.defineProperty(exports, "__esModule", { value: true });
+// We use any as a valid input type
+/* eslint-disable @typescript-eslint/no-explicit-any */
+const fs = __importStar(__webpack_require__(747));
+const os = __importStar(__webpack_require__(87));
+const utils_1 = __webpack_require__(278);
+function issueCommand(command, message) {
+    const filePath = process.env[`GITHUB_${command}`];
+    if (!filePath) {
+        throw new Error(`Unable to find environment variable for file command ${command}`);
+    }
+    if (!fs.existsSync(filePath)) {
+        throw new Error(`Missing file at path: ${filePath}`);
+    }
+    fs.appendFileSync(filePath, `${utils_1.toCommandValue(message)}${os.EOL}`, {
+        encoding: 'utf8'
+    });
 }
+exports.issueCommand = issueCommand;
+//# sourceMappingURL=file-command.js.map
 
+/***/ }),
+
+/***/ 747:
+/***/ (function(module) {
+
+module.exports = require("fs");
 
 /***/ })
 
