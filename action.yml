@@ -11,10 +11,10 @@ inputs:
   time_offset:
     description: The number of seconds that will be added to the current time.
     required: false
-    default: 0
+    default: '0'
 outputs:
   code:
     description: Generated auth code.
 runs:
-  using: node12
+  using: node16
   main: dist/index.js
