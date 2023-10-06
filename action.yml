@@ -16,5 +16,5 @@ outputs:
   code:
     description: Generated auth code.
 runs:
-  using: node16
+  using: node20
   main: dist/index.js
